@@ -1,0 +1,167 @@
+---
+title: "Happiest Country"
+output: html_notebook
+---
+```
+{r}
+library(tidyverse)
+library(dplyr)
+library(plyr)
+library(readxl)
+library(data.table)
+library(ggplot2)
+library(hrbrthemes)
+library(corrplot)
+library(GGally)
+library(plotly)
+library(rpart)
+library(rpart.plot)
+library(partykit)
+library(caret)
+library(randomForest)
+library(caTools)
+library(viridis)
+library(CGPfunctions)
+```
+```{r}
+############LOADING FILES##############
+data <-read.csv("Combine.csv")
+data2016 <-read.csv("2016.csv")
+count(data$Country)
+```
+
+```{r}
+###Using data set from 2016 data set to merge with the combine data set for Region Variable:
+data2016 <- data2016 %>% select(Country,Region)
+combineddata <- left_join(data,data2016, by ="Country")
+names(combineddata)
+str(combineddata)
+```
+```{r}
+### For some reason, the perception of corruption is character type. 
+combineddata$Perceptions.of.corruption <-as.numeric(as.character(combineddata$Perceptions.of.corruption))
+```
+```{r}
+str(combineddata)
+```
+
+```{r}
+############CHECK THE FACTORS THAT MAY INCREASE THE HAPPY SCORE FROM 2017 TO 2019#######################
+#2017
+data2017 <-combineddata %>% filter(Year =="2017")
+ggcorr(data2017[,3:9],geom ="blank", label = TRUE, hjust =1) +
+  geom_point(size = 10, aes(color = coefficient > 0, alpha = abs(coefficient) > 0.5)) +
+  scale_alpha_manual(values = c("TRUE" = 0.25, "FALSE" = 0)) +
+  guides(color = FALSE, alpha = FALSE)+
+  ggtitle("CORRELATION-2017")
+```
+
+```{r}
+#2018
+data2018 <-combineddata %>% filter(Year =="2018")
+ggcorr(data2018[,3:9],geom ="blank", label = TRUE, hjust =1) +
+  geom_point(size = 10, aes(color = coefficient > 0, alpha = abs(coefficient) > 0.5)) +
+  scale_alpha_manual(values = c("TRUE" = 0.25, "FALSE" = 0)) +
+  guides(color = FALSE, alpha = FALSE)+
+  ggtitle("CORRELATION-2018")
+```
+```{r}
+#2019
+data2019 <-combineddata %>% filter(Year =="2019")
+ggcorr(data2019[,3:9],geom ="blank", label = TRUE, hjust =1) +
+  geom_point(size = 10, aes(color = coefficient > 0, alpha = abs(coefficient) > 0.5)) +
+  scale_alpha_manual(values = c("TRUE" = 0.25, "FALSE" = 0)) +
+  guides(color = FALSE, alpha = FALSE)+
+  ggtitle("CORRELATION-2019")
+```
+### As we can see the major influence factors are
+### GDP Per Capita, Social Support,Healthy Life Expectancy, and Freedom
+### While Generosity and Corruption are not
+
+
+### The graph bellows also give us a clear signal that the increase in GDP per capita will lead to the increase of Happiness Score
+```{r}
+combineddata$Year <-factor(combineddata$Year)
+names(combineddata)
+str(combineddata)
+data <-combineddata
+ggplot(data = data, aes(x=GDP.per.capita,y=Score, color=Year))+
+  geom_point(aes(color=Year)) + 
+  geom_smooth(se = FALSE)+
+  labs(title ="HAPPINESS VS GDP PER CAPITA")+
+  xlab("GDP PER CAPITA")+
+  ylab("HAPPINESS SCORE")
+```
+
+### Also GDP per capita has strong correlation with Social Support and Healthy Life Expectancy. It would mean that citizens have more support from government and more access to medical utilities.
+```{r}
+ggplot(data = data, aes(x=Healthy.Life.Expectancy, y= Score, color=Year))+
+  geom_point(aes(color=Year)) + 
+  geom_smooth(se = FALSE)+
+  scale_x_continuous(trans = 'log10')+
+  labs(title ="GDP PER CAPITA VS HEALTHY")+
+  xlab("GDP PER CAPITA")+
+  ylab("HEALTHY")
+```
+```{r}
+########CHECK THE VARIATION OF TOP 10 HAPPIEST COUNTRY OVER YEAR FROM 2017-2019######################
+##CHANGING IN RANGE
+variation1 <-combineddata %>%filter(Year!="2016" & Overall.rank <= 10) %>% mutate(Year =factor(Year),Score)
+newggslopegraph(variation1,Year,Score,Country)+
+  labs(title="Ranking Change over Year in Top 10",
+  subtitle = "Interm of Happiness Score",
+  caption = " ")
+```
+```{r}
+##CHANGING IN GDP PER CAPITA
+variation2 <-combineddata %>%filter(Year!="2016" & Overall.rank <=10)%>%mutate(Year =factor(Year),GDP.per.capita)
+newggslopegraph(variation2,Year,GDP.per.capita,Country)+
+  labs(title="Ranking Change over Year in Top 10",
+       subtitle = "Interm of GDP Per Capita",
+       caption = " ")
+```
+```{r}
+newdf <-data2019%>%select(Country,GDP.per.capita,Region)%>%head(10)
+ggplot(newdf,aes(fill=Region,x=Country,y=GDP.per.capita))+
+  geom_bar(position="dodge", stat="identity")+
+  theme(axis.text.x = element_text(face="bold",color="Brown",size =10, angle =90),
+        axis.text.y = element_text(face = "bold",color = "Purple",size = 10))
+```
+#####################BUILDING MODEL TO SEE GDP PER CAPITA REALLY DETERMINES THE HAPPINESS########################
+```{r}
+#Check the Descriptive statistic of data
+summary(data$Score)
+#Create factor base on range of Score.
+data$Score <-cut(data$Score,3,labels =c("(2.693,4.498)" = "Low", "(4.498,6.187]" = "Medium", "(6.187,7.769]" = "High"))
+print(data$Score)
+```
+```{r}
+###RAINFOREST:
+names(data)
+df2<-data%>%drop_na()%>%select(-1,-2,-10:-11) 
+names(df2)
+set.seed(1234)
+```
+```{r}
+##BUILDING MODEL RAIN FOREST
+sample = sample.split(df2$Score,SplitRatio = 0.75)
+train<-subset(df2,sample == T)
+test<-subset(df2,sample == F)
+dim(train)
+dim(test)
+rfmodel <-randomForest(Score~.,data = train)
+rfmodel
+```
+```{r}
+predict<-predict(rfmodel,newdata = test[,-1])
+table = table(test$Score,predict)
+confusionMatrix(test$Score,predict)
+varImp(rfmodel)
+```
+
+
+
+
+
+
+
