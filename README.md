@@ -1,2 +1,2 @@
 # Portfolio
-This portfolio created to transfer all of my pratice and school projects from my other github account used for school.
+This respository is created for all my works and school project from other github account.
