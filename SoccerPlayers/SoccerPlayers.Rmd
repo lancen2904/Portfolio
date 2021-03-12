@@ -1,0 +1,72 @@
+---
+title: "Soccer Player"
+output: html_document
+---
+LOADING PACKAGES
+```{r}
+library(tidyverse)
+library(hrbrthemes)
+library(viridis)
+library(socviz)
+library(ggrepel)
+library(ggraph)
+library(igraph)
+library(ggplot2)
+library(dplyr)
+```
+```{r}
+#####Load Dataset######
+FinalData <- read_csv("FinalData.csv")
+```
+
+#####Top 10 Highest #####
+##In Term of Wage##
+
+```{r }
+newdata1 <-FinalData %>% 
+  arrange(Wage) %>% 
+  top_n(10,wt = Wage ) %>% 
+  select( Name,Wage,Nationality)
+ggplot(newdata1, aes(fill=Nationality, y=Name, x=Wage)) + 
+  geom_bar(position="dodge", stat="identity")+
+  labs(title="Top 10 Paid Soccer Players by Wage and Their Nationality",
+       subtitle = "Data from 2019",
+       caption="Data Source: https://www.kaggle.com/hiusanmaz/football-players-dataset") +
+  xlab("Wage in Thousand €")
+
+```
+```{r}
+##In Term of Value##
+newdata2 <-FinalData %>% 
+  arrange(Value) %>% 
+  top_n(10,wt = Value ) %>% 
+  select( Name,Value,Nationality)
+ggplot(newdata2, aes(fill=Nationality, y=Name, x=Value)) + 
+  geom_bar(position="dodge", stat="identity")+
+  xlab("Value in Million €")+
+  labs(title="Top 10 Paid Soccer Players by Value and Their Nationality",
+       subtitle = "Data from 2019",
+       caption="Data Source: https://www.kaggle.com/hiusanmaz/football-players-dataset")
+```
+
+```{r}
+#####Graph Shows Age of Player ####
+newdata3 <- as.data.frame(table(FinalData$Age))
+ggplot(newdata3,aes(x=Var1, y=Freq))+
+  geom_bar(stat="identity", with =0.2, fill="brown", colour = "yellow")+
+  xlab("Age")+
+  ylab("Count")+
+  labs(title="Group Player by Age",
+       subtitle = "Data from 2019",
+       caption="Data Source: https://www.kaggle.com/hiusanmaz/football-players-dataset")
+
+```
+```{r}
+####Graph Shows Value vs Age vs Potential####
+ggplot(FinalData, aes(Age, Potential, size = Value, color=Nationality)) + geom_point(alpha=1)+
+  geom_text(aes(size=20,label=ifelse(Value > 70,as.character(Name),' ')),hjust=0,vjust=0)+
+  labs(title="Players Value in Million €  Based on Potential Point and Age",
+         subtitle = "Data from 2019",
+         caption="Data Source: https://www.kaggle.com/hiusanmaz/football-players-dataset")
+```
+
